@@ -41,7 +41,7 @@ make lint    # Check compliance
 
 ## Continuous Integration
 
-The GitLab CI pipeline runs automatically on every push and merge request:
+The GitHub CI pipeline (currently disabled) consists of three stages:
 
 | Stage | Commands |
 |-------|----------|
@@ -50,6 +50,7 @@ The GitLab CI pipeline runs automatically on every push and merge request:
 | Install | `make install-fastgen` |
 
 **Note:** Before submitting a pull request, ensure all checks pass locally.
+
 ## Pull Request Process
 
 1. Fork the repository (for external contributors) or create a feature branch.
@@ -62,7 +63,6 @@ The GitLab CI pipeline runs automatically on every push and merge request:
 5. Push and create a Pull Request.
 
 **Note:** Keep PRs focused on a single concern and reference related issues (e.g., "Fixes #123").
-
 
 ## Developer Certificate of Origin
 
