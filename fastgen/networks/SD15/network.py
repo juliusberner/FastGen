@@ -1,8 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 The HuggingFace Team. All rights reserved.
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-
-# -----------------------------------------------------------------------------
-# Copyright 2025 The HuggingFace Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,9 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# See licenses/diffusers/LICENSE for more details.
-# -----------------------------------------------------------------------------
 
 from typing import Any, Dict, List, Optional, Tuple, Union, Set
 import types

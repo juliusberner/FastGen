@@ -91,3 +91,7 @@ The GitHub CI pipeline (currently disabled) consists of three stages:
 
     (d) I understand and agree that this project and the contribution are public and that a record of the contribution (including all personal information I submit with it, including my sign-off) is maintained indefinitely and may be redistributed consistent with this project or the open source license(s) involved.
 ```
+
+## License
+
+Contributions to this project will only be accepted under the Apache License, Version 2.0. See the [LICENSE](LICENSE) file in the root of this repository for the full text.
