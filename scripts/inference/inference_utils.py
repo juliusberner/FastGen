@@ -191,10 +191,8 @@ def load_source_image_for_net(path: str | Path, net: torch.nn.Module, input_shap
 # -----------------------------------------------------------------------------
 
 
-def prepare_video_frames(frames, num_frames: int, height: int, width: int) -> dict[str, Any]:
-    """Transform decoded ``[T, H, W, C]`` frames exactly like the training loader."""
-    from fastgen.datasets.wds_dataloaders import transform_video
-
+def _rgb_uint8_frames(frames) -> torch.Tensor:
+    """Validate decoded THWC frames and convert them to RGB uint8."""
     frames = torch.as_tensor(frames).detach().cpu()
     if frames.ndim != 4 or frames.shape[0] == 0:
         raise ValueError(f"Expected non-empty video frames [T, H, W, C], got {tuple(frames.shape)}")
@@ -211,7 +209,14 @@ def prepare_video_frames(frames, num_frames: int, height: int, width: int) -> di
         frames = unit_pixels_to_uint8(frames)
     else:
         frames = frames.clamp(0, 255).to(torch.uint8)
+    return frames
 
+
+def prepare_video_frames(frames, num_frames: int, height: int, width: int) -> dict[str, Any]:
+    """Transform decoded ``[T, H, W, C]`` frames exactly like the training loader."""
+    from fastgen.datasets.wds_dataloaders import transform_video
+
+    frames = _rgb_uint8_frames(frames)
     result = transform_video(frames, sequence_length=num_frames, img_size=(width, height))
     result["real_raw"] = result["real_raw"].unsqueeze(0)
     return result
@@ -228,6 +233,13 @@ def prepare_conditioning_image_for_net(image, net: torch.nn.Module, input_shape)
         raise ValueError(f"Expected one decoded image [H, W, C] or [1, H, W, C], got {tuple(frames.shape)}")
     video_shape = input_shape["video"] if isinstance(input_shape, Mapping) else input_shape
     _, height, width = net.pixel_shape(video_shape)
+    transform = getattr(net, "transform_conditioning_image", None)
+    if transform is not None:
+        from PIL import Image
+
+        pixels = _rgb_uint8_frames(frames)
+        prepared, cropping_params = transform(Image.fromarray(pixels[0].numpy()), (width, height))
+        return {"real_raw": prepared.unsqueeze(0).unsqueeze(2), "cropping_params": cropping_params}
     return prepare_video_frames(frames, num_frames=1, height=height, width=width)
 
 

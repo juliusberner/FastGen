@@ -1012,6 +1012,7 @@ class _InferenceModel:
     prepare_batch = FastGenModel.prepare_batch
 
     def __init__(self, net, input_shape):
+        self.config = SimpleNamespace(inference=True)
         self.net = net
         self.net_preprocessors = net
         self.input_shape = input_shape
@@ -1107,7 +1108,10 @@ def _patch_inference_runtime(monkeypatch, module, model, tmp_path, teacher_overr
 
 
 def _training_conditioning(model, data):
-    return model.prepare_batch(data)
+    from fastgen.utils.basic_utils import attr_override
+
+    with attr_override(model, "config.inference", False):
+        return model.prepare_batch(data)
 
 
 def _assert_default_or_explicit_steps(sample_call, sample_steps):
@@ -1876,6 +1880,8 @@ CASES = [
     InferenceCase("MiniMaxH3/config_sft.py", "video", multimodal=True),
     InferenceCase("MiniMaxH3/config_dmd2.py", "video", multimodal=True),
     InferenceCase("MiniMaxH3/config_sft.py", "video", "contextual_text", multimodal=True),
+    InferenceCase("Kandinsky6/config_dmd2_t2va.py", "video", multimodal=True),
+    InferenceCase("Kandinsky6/config_dmd2_i2va.py", "video", "i2v", multimodal=True),
     # CausVid owns the distilled multi-segment path; causal SFT uses its network sampler.
     InferenceCase("WanT2V/config_causvid.py", "video", extrapolate=True),
     InferenceCase("WanI2V/config_sft_causal_wan22_5b.py", "video", "i2v"),
@@ -2654,7 +2660,7 @@ def test_student_generator_uses_the_globally_resolved_default_steps():
 
     model = object.__new__(_StudentLoopHarness)
     torch.nn.Module.__init__(model)
-    model.config = SimpleNamespace(student_sample_type="ode")
+    model.config = SimpleNamespace(student_sample_type="ode", inference=False)
     model.precision_amp_infer = None
     net = RecordingNet()
     noise = torch.ones(2, 1)
@@ -2998,3 +3004,45 @@ def test_step_accepts_scalar_grid_time(composite):
             torch.testing.assert_close(scalar_result[key], batched_result[key])
     else:
         torch.testing.assert_close(scalar_result, batched_result)
+
+
+@pytest.mark.parametrize("source_shape", [(7, 11, 3), (13, 23, 1), (17, 29, 4)])
+def test_kandinsky6_inference_uses_native_image_pixels(tmp_path, source_shape):
+    import torchvision.transforms.functional as TF
+    from fastgen.networks.Kandinsky6.network import Kandinsky6
+
+    height, width, channels = source_shape
+    pixels = (np.arange(height * width * channels, dtype=np.uint32) * 37 % 256).astype(np.uint8)
+    pixels = pixels.reshape(height, width) if channels == 1 else pixels.reshape(source_shape)
+    image = Image.fromarray(pixels)
+    image_path = tmp_path / "source.png"
+    image.save(image_path)
+    target_width, target_height = 24, 16
+    # Independent native prepare_latents.encode_i2va_first_frame pixel boundary:
+    # uint8 tensor bilinear interpolation, truncated resize size, floor crop offsets.
+    source = TF.pil_to_tensor(image.convert("RGB")).unsqueeze(0)
+    scale = min(height / target_height, width / target_width)
+    resized_height, resized_width = int(height / scale), int(width / scale)
+    top, left = (resized_height - target_height) // 2, (resized_width - target_width) // 2
+    expected = TF.crop(TF.resize(source, (resized_height, resized_width)), top, left, target_height, target_width)
+    expected = expected[0].float() / 127.5 - 1
+    assert not torch.equal(expected, transform_image(image, (target_width, target_height)))
+    net = Kandinsky6.__new__(Kandinsky6)
+    torch.nn.Module.__init__(net)
+    input_shape = {"video": [16, 31, 2, 3], "audio": [40, 218]}
+    prepared = inference_utils.load_conditioning_image_for_net(image_path, net, input_shape)
+    torch.testing.assert_close(prepared["real_raw"], expected[None, :, None], atol=0, rtol=0)
+    assert prepared["cropping_params"] == dict(
+        resize_w=resized_width,
+        resize_h=resized_height,
+        orig_w=width,
+        orig_h=height,
+        crop_x0=left,
+        crop_y0=top,
+        crop_w=target_width,
+        crop_h=target_height,
+    )
+    rgb_unit = torch.from_numpy(np.asarray(image.convert("RGB")).copy()).float()[None] / 255
+    comfy = inference_utils.prepare_conditioning_image_for_net(rgb_unit, net, input_shape)
+    torch.testing.assert_close(comfy["real_raw"], prepared["real_raw"], atol=0, rtol=0)
+    assert comfy["cropping_params"] == prepared["cropping_params"]
