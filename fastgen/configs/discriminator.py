@@ -85,7 +85,6 @@ Discriminator_CogVideoX2B_Config: DictConfig = L(Discriminator_VideoDiT)(
     num_blocks=30,
     disc_type="dit_simple_conv3d",
     inner_dim=1920,
-    # The former patch-split head's width (480 // 2): 4x the channels on a 4x coarser grid keep its compute.
     hidden_channels=240,
 )
 
@@ -95,7 +94,6 @@ Discriminator_CogVideoX5B_Config: DictConfig = L(Discriminator_VideoDiT)(
     num_blocks=42,
     disc_type="dit_simple_conv3d",
     inner_dim=3072,
-    # The former patch-split head's width (768 // 2): 4x the channels on a 4x coarser grid keep its compute.
     hidden_channels=384,
 )
 
