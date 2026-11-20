@@ -27,35 +27,6 @@ from fastgen.utils.env import hf_load
 from .vae import AutoencoderKLHunyuanVideo
 
 
-def transform_conditioning_image(image, img_size):
-    """Native fixed-canvas I2V pixels (uint8 bilinear cover-resize, floor center-crop) and their cropping."""
-    from torchvision.transforms import InterpolationMode
-    from torchvision.transforms import functional as TF
-
-    width, height = img_size
-    if width < 1 or height < 1:
-        raise ValueError("Conditioning image dimensions must be positive")
-    tensor = TF.pil_to_tensor(image.convert("RGB")).unsqueeze(0)
-    source_height, source_width = tensor.shape[-2:]
-    scale = min(source_height / height, source_width / width)
-    resized_height, resized_width = int(source_height / scale), int(source_width / scale)
-    tensor = TF.resize(
-        tensor, (resized_height, resized_width), interpolation=InterpolationMode.BILINEAR, antialias=True
-    )
-    top, left = (resized_height - height) // 2, (resized_width - width) // 2
-    tensor = TF.crop(tensor, top, left, height, width).squeeze(0).float() / 127.5 - 1
-    return tensor, {
-        "resize_w": resized_width,
-        "resize_h": resized_height,
-        "orig_w": source_width,
-        "orig_h": source_height,
-        "crop_x0": left,
-        "crop_y0": top,
-        "crop_w": width,
-        "crop_h": height,
-    }
-
-
 def load_component(component, source, subfolder, revision, dtype):
     """Only rank zero loads weights; other ranks construct the same registered meta tree."""
     if FastGenNetwork._is_in_meta_context() or not is_rank0():

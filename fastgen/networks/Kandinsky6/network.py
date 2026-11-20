@@ -33,7 +33,7 @@ from fastgen.utils.guidance import GuidanceConfig
 from fastgen.utils.tree_utils import tmap
 
 from .precision import install_native_precision, reset_deterministic_buffers, rope_precision_overrides
-from .preprocessors import Kandinsky6TextEncoder, Kandinsky6VAE, audio_shape, transform_conditioning_image
+from .preprocessors import Kandinsky6TextEncoder, Kandinsky6VAE, audio_shape
 
 MODEL_ID = "kandinskylab/Kandinsky-6.0-Pro-5s-Diffusers"
 
@@ -124,7 +124,6 @@ class Kandinsky6(FastGenNetwork):
 
     latent_compression_factors = (4, 8, 8)
     audio_sampling_rate = 44100
-    transform_conditioning_image = staticmethod(transform_conditioning_image)
 
     def __init__(
         self,
